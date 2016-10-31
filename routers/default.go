@@ -6,6 +6,7 @@ import (
 
 	// Local packages
 	"jaha-api/controllers"
+	"jaha-api/middlewares"
 )
 
 /**
@@ -19,6 +20,7 @@ func GetDefaultRouter() *gin.Engine {
 	router = gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+	router.Use(middlewares.Cors())
 
 	attachDefaultRoutes(router)
 
