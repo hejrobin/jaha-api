@@ -36,5 +36,19 @@ func GetDefaultRouter() *gin.Engine {
  */
 func attachDefaultRoutes(router *gin.Engine) {
 	router.NoRoute(controllers.DefaultController().MissingRoute)
-	router.GET("", controllers.DefaultController().Index)
+
+	v1 := router.Group("v1")
+	{
+		category := v1.Group("categories")
+		{
+			category.GET("", controllers.CategoriesController().Index)
+			category.POST("", controllers.CategoriesController().Create)
+
+			category.GET(":uuid", controllers.CategoriesController().Show)
+			category.PATCH(":uuid", controllers.CategoriesController().Update)
+			category.DELETE(":uuid", controllers.CategoriesController().Destroy)
+			category.PUT(":uuid", controllers.CategoriesController().Restore)
+		}
+	}
+
 }

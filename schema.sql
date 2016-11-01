@@ -1,0 +1,14 @@
+CREATE TABLE `category` (
+	`id` INT(11) unsigned NOT NULL AUTO_INCREMENT,
+	`uuid` VARCHAR(8) NOT NULL,
+	`name` VARCHAR(255) NOT NULL,
+	`slug` VARCHAR(255) NOT NULL,
+	`published` tinyint(1) DEFAULT '1' NOT NULL,
+	`updated_at` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+	`deleted_at` DATETIME DEFAULT NULL,
+	`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uuid` (`uuid`),
+	UNIQUE KEY `name` (`name`),
+	UNIQUE KEY `slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
