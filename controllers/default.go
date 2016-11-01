@@ -5,6 +5,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const COLLECTION_DEFAULT_LIMIT = 25
+
 type defaultPrototype struct{}
 
 /**

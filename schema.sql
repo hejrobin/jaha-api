@@ -1,9 +1,9 @@
+DROP TABLE IF EXISTS `category`;
 CREATE TABLE `category` (
 	`id` INT(11) unsigned NOT NULL AUTO_INCREMENT,
 	`uuid` VARCHAR(8) NOT NULL,
 	`name` VARCHAR(255) NOT NULL,
 	`slug` VARCHAR(255) NOT NULL,
-	`published` tinyint(1) DEFAULT '1' NOT NULL,
 	`updated_at` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 	`deleted_at` DATETIME DEFAULT NULL,
 	`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -11,4 +11,19 @@ CREATE TABLE `category` (
 	UNIQUE KEY `uuid` (`uuid`),
 	UNIQUE KEY `name` (`name`),
 	UNIQUE KEY `slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+DROP TABLE IF EXISTS `statement`;
+CREATE TABLE `statement` (
+	`id` INT(11) unsigned NOT NULL AUTO_INCREMENT,
+	`uuid` VARCHAR(8) NOT NULL,
+	`category_id` INT(11) unsigned NOT NULL,
+	`body` TEXT NOT NULL,
+	`updated_at` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+	`deleted_at` DATETIME DEFAULT NULL,
+	`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uuid` (`uuid`),
+	CONSTRAINT `fk_statement_category`
+		FOREIGN KEY (`category_id`) REFERENCES `category` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

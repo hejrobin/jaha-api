@@ -49,6 +49,17 @@ func attachDefaultRoutes(router *gin.Engine) {
 			category.DELETE(":uuid", controllers.CategoriesController().Destroy)
 			category.PUT(":uuid", controllers.CategoriesController().Restore)
 		}
+
+		statement := v1.Group("statements")
+		{
+			statement.GET("", controllers.StatementsController().Index)
+			statement.POST("", controllers.StatementsController().Create)
+
+			statement.GET(":uuid", controllers.StatementsController().Show)
+			statement.PATCH(":uuid", controllers.StatementsController().Update)
+			statement.DELETE(":uuid", controllers.StatementsController().Destroy)
+			statement.PUT(":uuid", controllers.StatementsController().Restore)
+		}
 	}
 
 }
