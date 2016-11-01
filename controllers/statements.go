@@ -13,6 +13,7 @@ import (
 	// Local packages
 	"jaha-api/db"
 	"jaha-api/models"
+	"jaha-api/scopes"
 	"jaha-api/utils"
 )
 
@@ -34,6 +35,7 @@ func (statementsPrototype) Index(ctx *gin.Context) {
 	params := ctx.Request.URL.Query()
 	paramPage, _ := strconv.Atoi(utils.Pick(params.Get("page"), "1"))
 	paramOrderBy := utils.Pick(params.Get("orderBy"), "createdAt:asc")
+	paramScope := params.Get("scope")
 
 	dbc := db.GetConnection()
 
@@ -50,12 +52,37 @@ func (statementsPrototype) Index(ctx *gin.Context) {
 	collection.SetPageCount(collection.GetPageCount())
 
 	query := dbc.Preload("Category")
+	validScope := false
 
-	// Set orderBy conditions
-	orderByConditions := utils.MapOrderByConditions(paramOrderBy)
-	query = utils.FilterOrderByConditions(query, models.Statement{}, orderByConditions)
+	if paramScope != "" {
+		switch paramScope {
+		case "random":
+		case "randomPick":
+			validScope = true
 
-	queryError = query.Limit(collection.Limit).Offset(collection.GetOffset()).Find(&statements).Error
+			collection.SetPointer(1)
+			collection.SetPageCount(1)
+
+			randomLimit := collection.Limit
+
+			if paramScope == "randomPick" {
+				randomLimit = 1
+			}
+
+			queryError = query.Scopes(scopes.Statement().Random).Limit(randomLimit).Find(&statements).Error
+
+			collection.SetCount(len(statements))
+			break
+		}
+	}
+
+	if !validScope {
+		// Set orderBy conditions
+		orderByConditions := utils.MapOrderByConditions(paramOrderBy)
+		query = utils.FilterOrderByConditions(query, models.Statement{}, orderByConditions)
+
+		queryError = query.Limit(collection.Limit).Offset(collection.GetOffset()).Find(&statements).Error
+	}
 
 	if queryError != nil {
 		ctx.JSON(500, gin.H{
