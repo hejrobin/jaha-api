@@ -6,6 +6,9 @@ import (
 
 	// 3rd party packages
 	"gopkg.in/guregu/null.v3"
+
+	// Local packages
+	"jaha-api/utils"
 )
 
 type Statement struct {
@@ -17,16 +20,23 @@ type Statement struct {
 	UpdatedAt  null.Time `json:"updatedAt"`
 	DeletedAt  null.Time `json:"-"`
 	CreatedAt  time.Time `json:"createdAt"`
+	errors     []string
 }
 
 type Statements []Statement
 
-type StatementCollection struct {
-	Meta       Collection `json:"meta"`
-	Collection Statements `json:"collection"`
-}
-
 type StatementPayload struct {
 	Body     string `json:"body" validate:"omitempty,gte=3"`
 	Category string `json:"category" validate:"omitempty,len=8"`
+}
+
+func (statement *Statement) Valid() bool {
+	validationError, validationErrors := utils.Validate(statement)
+
+	if validationError != nil {
+		statement.errors = validationErrors
+		return false
+	}
+
+	return true
 }

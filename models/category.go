@@ -20,12 +20,18 @@ type Category struct {
 
 type Categories []Category
 
-type CategoryCollection struct {
-	Meta       Collection `json:"meta"`
-	Collection Categories `json:"collection"`
-}
-
 type CategoryPayload struct {
 	Name string `json:"name" validate:"omitempty,gte=3"`
 	Slug string `json:"slug" validate:"omitempty,gte=3"`
+}
+
+func (category *Category) Valid() bool {
+	validationError, validationErrors := utils.Validate(category)
+
+	if validationError != nil {
+		category.errors = validationErrors
+		return false
+	}
+
+	return true
 }
