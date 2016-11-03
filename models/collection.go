@@ -5,101 +5,162 @@ import (
 	"math"
 )
 
-/**
- *	Collection struct, used to help with resource collection pagination.
- */
 type Collection struct {
-	Pointer   int `json:"page"`
-	PageCount int `json:"pageCount"`
-	Count     int `json:"records"`
-	Limit     int `json:"recordsPerPage"`
+	Pointer   int         `json:"page"`
+	PageCount int         `json:"pageCount"`
+	Records   interface{} `json:"records"`
+	Count     int         `json:"recordCount"`
+	Limit     int         `json:"recordsPerPage"`
 }
 
 /**
- *	Returns current collection pointer.
+ *	Return collection pointer.
  *
  *	@return int
  */
-func (c Collection) GetPointer() int {
-	return c.Pointer
+func (collection *Collection) GetPointer() int {
+	return collection.Pointer
 }
 
 /**
- *	Sets current collection pointer, sets pointer to zero if newPointer is a negative value.
+ *	Sets collection pointer.
  *
- *	@param newPointer int - New collection pointer.
+ *	@param newPointer int
  *
  *	@return void
  */
-func (c *Collection) SetPointer(newPointer int) {
-	c.Pointer = newPointer
-
-	if c.Pointer > 0 {
-		c.Pointer = c.Pointer
-	} else {
-		c.Pointer = 0
-	}
+func (collection *Collection) SetPointer(newPointer int) {
+	collection.Pointer = int(math.Abs(float64(newPointer)))
 }
 
 /**
- *	Sets collection count (number of resouces), also updates pages count.
- *
- *	@param count int - Current collection count.
- *
- *	@return void
- */
-func (c *Collection) SetCount(count int) {
-	c.Count = count
-}
-
-/**
- *	Returns the number of pages in current collection.
+ *	Returns collection record count.
  *
  *	@return int
  */
-func (c Collection) GetPageCount() int {
-	numPages := int(math.Ceil(float64(c.Count) / float64(c.Limit)))
-	return numPages
+func (collection *Collection) GetCount() int {
+	return collection.Count
+}
+
+/**
+ *	Sets collection record count.
+ *
+ *	@param newCount int
+ *
+ *	@return void
+ */
+func (collection *Collection) SetCount(newCount int) {
+	collection.Count = int(math.Abs(float64(newCount)))
+}
+
+/**
+ *	Returns collection record limit.
+ *
+ *	@return int
+ */
+func (collection *Collection) GetLimit() int {
+	return collection.Limit
+}
+
+/**
+ *	Sets collection record limit.
+ *
+ *	@param newLimit int
+ *
+ *	@return void
+ */
+func (collection *Collection) SetLimit(newLimit int) {
+	collection.Limit = int(math.Abs(float64(newLimit)))
+}
+
+/**
+ *	Returns collection page count.
+ *
+ *	@return int
+ */
+func (collection *Collection) GetPageCount() int {
+	return collection.PageCount
 }
 
 /**
  *	Sets collection page count.
  *
- *	@param pageCount int - Collection page count.
+ *	@param newPageCount int
  *
  *	@return void
  */
-func (c *Collection) SetPageCount(pageCount int) {
-	c.PageCount = pageCount
+func (collection *Collection) SetPageCount(newPageCount int) {
+	collection.PageCount = int(math.Abs(float64(newPageCount)))
 }
 
 /**
- *	Returns collection offset based on current pointer.
+ *	Returns collection records.
+ *
+ *	@return interface{}
+ */
+func (collection *Collection) GetRecords() interface{} {
+	return collection.Records
+}
+
+/**
+ *	Sets collection records.
+ *
+ *	@param collectionRecords interface{}
+ *
+ *	@return void
+ */
+func (collection *Collection) SetRecords(collectionRecords interface{}) {
+	collection.Records = collectionRecords
+}
+
+/**
+ *	Return collection offset.
  *
  *	@return int
  */
-func (c Collection) GetOffset() int {
-	pointer := c.Pointer - 1
+func (collection *Collection) GetOffset() int {
+	var pointer int
+	var offset int
+
+	pointer = collection.Pointer - 1
 
 	if pointer < 0 {
 		pointer = 0
 	}
 
-	offset := c.Limit * pointer
+	offset = collection.Limit * pointer
 
-	return offset
+	return int(math.Abs(float64(offset)))
 }
 
 /**
- *	Checks whether or not current collection pointer is out of bounds of collection range.
+ *	Validates whether or not pointer is out of collection bounts.
  *
  *	@return bool
  */
-func (c *Collection) IsOutOfBounds() bool {
-	numPages := c.GetPageCount()
-	if c.Pointer > numPages || c.Pointer < numPages {
+func (collection *Collection) IsOutOfBounds() bool {
+	numPages := collection.GetPageCount()
+	if collection.Pointer > numPages || collection.Pointer < numPages {
 		return true
 	}
 
 	return false
+}
+
+/**
+ *	Grabs new records and sets appropriate collection properties.
+ *
+ *	@param collectionRecords interface{}
+ *	@param newPointer int
+ *	@param newCount int
+ *
+ *	@return void
+ */
+func (collection *Collection) Grab(collectionRecords interface{}, newPointer int, newCount int) {
+	collection.SetRecords(collectionRecords)
+	collection.SetPointer(newPointer)
+	collection.SetCount(newCount)
+
+	newPageCount := int(math.Ceil(float64(collection.Count) / float64(collection.Limit)))
+	collection.SetPageCount(newPageCount)
 }
