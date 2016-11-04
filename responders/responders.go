@@ -1,9 +1,6 @@
 package responders
 
 import (
-	// Native packages
-	"strconv"
-
 	// 3rd party packages
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +16,7 @@ type Response map[string]interface{}
  *
  *	@return void
  */
-func ResponseObject(ctx *gin.Context, httpStatus int, response Response) {
+func ResponseObject(ctx *gin.Context, httpStatus int, response interface{}) {
 	ctx.JSON(httpStatus, response)
 }
 
@@ -43,4 +40,15 @@ func ResponseText(ctx *gin.Context, httpStatus int, responseText string) {
 			"message": responseText,
 		})
 	}
+}
+
+/**
+ *	Sends 204 No Content HTTP response.
+ *
+ *	@param ctx *gin.Context
+ *
+ *	@return void
+ */
+func NoContent(ctx *gin.Context) {
+	ctx.AbortWithStatus(204)
 }

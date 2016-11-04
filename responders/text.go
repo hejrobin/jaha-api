@@ -1,9 +1,6 @@
 package responders
 
 import (
-	// Native packages
-	"strconv"
-
 	// 3rd party packages
 	"github.com/gin-gonic/gin"
 )
@@ -16,10 +13,6 @@ func (prototype responseTextPrototype) Success(ctx *gin.Context, responseText st
 
 func (prototype responseTextPrototype) Created(ctx *gin.Context, responseText string) {
 	ResponseText(ctx, 201, responseText)
-}
-
-func (prototype responseTextPrototype) NoContent(ctx *gin.Context, responseText string) {
-	ResponseText(ctx, 204, responseText)
 }
 
 func (prototype responseTextPrototype) BadRequest(ctx *gin.Context, responseText string) {
