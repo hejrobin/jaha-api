@@ -4,6 +4,7 @@ import (
 	// Native packages
 	"fmt"
 	"strconv"
+	"strings"
 
 	// 3rd party packages
 	"github.com/gin-gonic/gin"
@@ -32,6 +33,7 @@ func (statementsProtoype) Index(ctx *gin.Context) {
 	var collection models.Collection
 	var collectionCount int
 	var queryError error
+	var scopeKey, scopeValue string
 
 	params := ctx.Request.URL.Query()
 	paramPage, _ := strconv.Atoi(utils.Pick(params.Get("page"), "1"))
@@ -48,14 +50,19 @@ func (statementsProtoype) Index(ctx *gin.Context) {
 	collection.SetPointer(paramPage)
 
 	query := dbc.Preload("Category")
-	validScope := false
+	applySortingFilters := true
 
-	if paramScope != "" {
-		switch paramScope {
+	scope := strings.Split(paramScope, ":")
+
+	if len(scope) == 2 {
+		scopeKey, scopeValue = scope[0], scope[1]
+	}
+
+	if scopeKey != "" {
+		switch scopeKey {
 		case "random":
 		case "randomPick":
-			validScope = true
-
+			applySortingFilters = false
 			randomLimit := collection.Limit
 
 			if paramScope == "randomPick" {
@@ -64,12 +71,17 @@ func (statementsProtoype) Index(ctx *gin.Context) {
 
 			queryError = query.Scopes(scopes.Statement().Random).Limit(randomLimit).Find(&statements).Error
 
-			collection.Grab(statements, 1, len(statements))
+			collection.Grab(statements, paramPage, len(statements))
+			break
+		case "category":
+			if scopeValue != "" {
+				query = query.Joins("LEFT JOIN `category` ON `category`.id = `statement`.category_id").Where("`category`.uuid = ?", scopeValue)
+			}
 			break
 		}
 	}
 
-	if !validScope {
+	if applySortingFilters {
 		// Set orderBy conditions
 		// @TODO Move MapOrderByConditions to Collection.
 		orderByConditions := utils.MapOrderByConditions(paramOrderBy)
@@ -77,7 +89,7 @@ func (statementsProtoype) Index(ctx *gin.Context) {
 
 		queryError = query.Limit(collection.Limit).Offset(collection.GetOffset()).Find(&statements).Error
 
-		collection.SetRecords(statements)
+		collection.Grab(statements, paramPage, len(statements))
 	}
 
 	if queryError != nil {
