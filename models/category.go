@@ -6,6 +6,9 @@ import (
 
 	// 3rd party packages
 	"gopkg.in/guregu/null.v3"
+
+	// Local packages
+	"jaha-api/utils"
 )
 
 type Category struct {
@@ -16,6 +19,7 @@ type Category struct {
 	UpdatedAt null.Time `json:"updatedAt"`
 	DeletedAt null.Time `json:"-"`
 	CreatedAt time.Time `json:"createdAt"`
+	errors    []string
 }
 
 type Categories []Category
@@ -29,9 +33,17 @@ func (category *Category) Valid() bool {
 	validationError, validationErrors := utils.Validate(category)
 
 	if validationError != nil {
-		category.errors = validationErrors
+		category.SetErrors(validationErrors)
 		return false
 	}
 
 	return true
+}
+
+func (category *Category) GetErrors() []string {
+	return category.errors
+}
+
+func (category *Category) SetErrors(errors []string) {
+	category.errors = errors
 }

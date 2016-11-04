@@ -13,11 +13,12 @@ import (
 	// Local packages
 	"jaha-api/db"
 	"jaha-api/models"
+	"jaha-api/responders"
 	"jaha-api/scopes"
 	"jaha-api/utils"
 )
 
-type statementsPrototype struct{}
+type statementsProtoype struct{}
 
 /**
  *	Lists published resources.
@@ -26,7 +27,7 @@ type statementsPrototype struct{}
  *
  *	@return void
  */
-func (statementsPrototype) Index(ctx *gin.Context) {
+func (statementsProtoype) Index(ctx *gin.Context) {
 	var statements models.Statements
 	var collection models.Collection
 	var collectionCount int
@@ -39,17 +40,12 @@ func (statementsPrototype) Index(ctx *gin.Context) {
 
 	dbc := db.GetConnection()
 
-	// Get total count
 	dbc.Model(&models.Statement{}).Count(&collectionCount)
 
-	// Set collection
-	collection = models.Collection{
-		Limit: COLLECTION_DEFAULT_LIMIT,
-		Count: collectionCount,
-	}
-
+	collection = models.Collection{}
+	collection.SetLimit(COLLECTION_DEFAULT_LIMIT)
+	collection.Grab(nil, 1, collectionCount)
 	collection.SetPointer(paramPage)
-	collection.SetPageCount(collection.GetPageCount())
 
 	query := dbc.Preload("Category")
 	validScope := false
@@ -60,9 +56,6 @@ func (statementsPrototype) Index(ctx *gin.Context) {
 		case "randomPick":
 			validScope = true
 
-			collection.SetPointer(1)
-			collection.SetPageCount(1)
-
 			randomLimit := collection.Limit
 
 			if paramScope == "randomPick" {
@@ -71,30 +64,28 @@ func (statementsPrototype) Index(ctx *gin.Context) {
 
 			queryError = query.Scopes(scopes.Statement().Random).Limit(randomLimit).Find(&statements).Error
 
-			collection.SetCount(len(statements))
+			collection.Grab(statements, 1, len(statements))
 			break
 		}
 	}
 
 	if !validScope {
 		// Set orderBy conditions
+		// @TODO Move MapOrderByConditions to Collection.
 		orderByConditions := utils.MapOrderByConditions(paramOrderBy)
 		query = utils.FilterOrderByConditions(query, models.Statement{}, orderByConditions)
 
 		queryError = query.Limit(collection.Limit).Offset(collection.GetOffset()).Find(&statements).Error
+
+		collection.SetRecords(statements)
 	}
 
 	if queryError != nil {
-		ctx.JSON(500, gin.H{
-			"error": queryError,
-		})
+		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
-	ctx.JSON(200, models.StatementCollection{
-		Collection: statements,
-		Meta:       collection,
-	})
+	responders.Json().Success(ctx, collection)
 	return
 }
 
@@ -105,30 +96,24 @@ func (statementsPrototype) Index(ctx *gin.Context) {
  *
  *	@return void
  */
-func (statementsPrototype) Show(ctx *gin.Context) {
+func (statementsProtoype) Show(ctx *gin.Context) {
 	var statement models.Statement
 	var queryError error
 
 	paramId := ctx.Param("uuid")
-
-	dbc := db.GetConnection()
-	queryError = dbc.Preload("Category").Where("`uuid` = ?", paramId).First(&statement).Error
+	queryError = db.GetConnection().Preload("Category").Where("`uuid` = ?", paramId).First(&statement).Error
 
 	if statement.ID == 0 {
-		ctx.JSON(404, gin.H{
-			"error": fmt.Sprintf("Statement#%s not found.", paramId),
-		})
+		responders.Text().NotFound(ctx, fmt.Sprintf("Statement#%s not found.", paramId))
 		return
 	}
 
 	if queryError != nil {
-		ctx.JSON(500, gin.H{
-			"error": queryError,
-		})
+		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
-	ctx.JSON(200, statement)
+	responders.Json().Success(ctx, statement)
 	return
 }
 
@@ -139,7 +124,7 @@ func (statementsPrototype) Show(ctx *gin.Context) {
  *
  *	@return void
  */
-func (statementsPrototype) Create(ctx *gin.Context) {
+func (statementsProtoype) Create(ctx *gin.Context) {
 	var payload models.StatementPayload
 	var statement models.Statement
 	var existing models.Statement
@@ -152,16 +137,12 @@ func (statementsPrototype) Create(ctx *gin.Context) {
 	dbc.Unscoped().Where("`body` = ?", payload.Body).First(&existing)
 
 	if existing.ID != 0 {
-		ctx.JSON(400, gin.H{
-			"error": fmt.Sprintf("Could not create resource, Statement#%s already exists.", existing.UUID),
-		})
+		responders.Text().BadRequest(ctx, fmt.Sprintf("Could not create resource, Statement#%s already exists.", existing.UUID))
 		return
 	}
 
 	if payload.Category == "" {
-		ctx.JSON(400, gin.H{
-			"error": "Could not create resource, Category#<UUID> missing.",
-		})
+		responders.Text().BadRequest(ctx, "Could not create resource, Category#<UUID> missing.")
 		return
 	}
 
@@ -169,9 +150,7 @@ func (statementsPrototype) Create(ctx *gin.Context) {
 	categoryError := dbc.Model(&models.Category{}).Where("`uuid` = ?", payload.Category).First(&category).Error
 
 	if categoryError != nil {
-		ctx.JSON(404, gin.H{
-			"error": fmt.Sprintf("Category#%s not found.", payload.Category),
-		})
+		responders.Text().NotFound(ctx, fmt.Sprintf("Category#%s not found.", payload.Category))
 		return
 	}
 
@@ -181,26 +160,14 @@ func (statementsPrototype) Create(ctx *gin.Context) {
 		Category: category,
 	})
 
-	validationError, validationErrors := models.Validate(statement)
-
-	if validationError != nil {
-		ctx.JSON(400, gin.H{
-			"error":            "Resource validation failed, see validationErrors",
-			"validationErrors": validationErrors,
-		})
-		return
-	}
-
 	createError = dbc.Create(&statement).Error
 
 	if createError != nil {
-		ctx.JSON(500, gin.H{
-			"error": "Could not create resource, unknown error.",
-		})
+		responders.Text().ServerError(ctx, "Could not create resource, unknown error.")
 		return
 	}
 
-	ctx.JSON(201, statement)
+	responders.Json().Success(ctx, statement)
 	return
 }
 
@@ -211,7 +178,7 @@ func (statementsPrototype) Create(ctx *gin.Context) {
  *
  *	@return void
  */
-func (statementsPrototype) Update(ctx *gin.Context) {
+func (statementsProtoype) Update(ctx *gin.Context) {
 	var statement models.Statement
 	var payload models.StatementPayload
 	var queryError error
@@ -219,51 +186,42 @@ func (statementsPrototype) Update(ctx *gin.Context) {
 	paramId := ctx.Param("uuid")
 
 	dbc := db.GetConnection()
-	queryError = dbc.Preload("Category").Unscoped().Where("`uuid` = ?", paramId).First(&statement).Error
+	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&statement).Error
 
 	if statement.ID == 0 {
-		ctx.JSON(404, gin.H{
-			"error": fmt.Sprintf("Statement#%s not found.", paramId),
-		})
+		responders.Text().NotFound(ctx, fmt.Sprintf("Statement#%s not found.", paramId))
 		return
 	}
 
 	if queryError != nil {
-		ctx.JSON(500, gin.H{
-			"error": queryError,
-		})
+		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
 	ctx.BindJSON(&payload)
 
 	if payload == (models.StatementPayload{}) {
-		ctx.JSON(400, gin.H{
-			"error": "Payload cannot be empty or malformed.",
-		})
+		responders.Text().BadRequest(ctx, "Payload cannot be empty or malformed.")
 		return
 	}
 
-	validationError, validationErrors := models.Validate(payload)
+	validationError, validationErrors := utils.Validate(payload)
 
 	if validationError != nil {
-		ctx.JSON(400, gin.H{
-			"error":            "Resource validation failed, see validationErrors",
-			"validationErrors": validationErrors,
+		responders.Json().BadRequest(ctx, responders.Response{
+			"error":  "Resource validation failed, see issues",
+			"issues": validationErrors,
 		})
-		return
 	}
 
 	updateError := dbc.Model(&statement).Unscoped().Updates(payload).Error
 
 	if updateError != nil {
-		ctx.JSON(500, gin.H{
-			"error": fmt.Sprintf("Could not update Statement#%s.", paramId),
-		})
+		responders.Text().ServerError(ctx, fmt.Sprintf("Could not update Statement#%s.", paramId))
 		return
 	}
 
-	ctx.JSON(200, statement)
+	responders.Json().Success(ctx, statement)
 	return
 }
 
@@ -274,7 +232,7 @@ func (statementsPrototype) Update(ctx *gin.Context) {
  *
  *	@return void
  */
-func (statementsPrototype) Destroy(ctx *gin.Context) {
+func (statementsProtoype) Destroy(ctx *gin.Context) {
 	var statement models.Statement
 	var queryError error
 	var destroyError error
@@ -285,29 +243,23 @@ func (statementsPrototype) Destroy(ctx *gin.Context) {
 	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&statement).Error
 
 	if statement.ID == 0 {
-		ctx.JSON(404, gin.H{
-			"error": fmt.Sprintf("Statement#%s not found.", paramId),
-		})
+		responders.Text().NotFound(ctx, fmt.Sprintf("Statement#%s not found.", paramId))
 		return
 	}
 
 	if queryError != nil {
-		ctx.JSON(500, gin.H{
-			"error": queryError,
-		})
+		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
 	destroyError = dbc.Delete(&statement).Error
 
 	if destroyError != nil {
-		ctx.JSON(500, gin.H{
-			"error": fmt.Sprintf("Could not destroy resource Statement#%s.", paramId),
-		})
+		responders.Text().ServerError(ctx, fmt.Sprintf("Could not destroy resource Statement#%s.", paramId))
 		return
 	}
 
-	ctx.AbortWithStatus(204)
+	responders.NoContent(ctx)
 	return
 }
 
@@ -318,7 +270,7 @@ func (statementsPrototype) Destroy(ctx *gin.Context) {
  *
  *	@return void
  */
-func (statementsPrototype) Restore(ctx *gin.Context) {
+func (statementsProtoype) Restore(ctx *gin.Context) {
 	var statement models.Statement
 	var queryError error
 	var restoreError error
@@ -326,19 +278,15 @@ func (statementsPrototype) Restore(ctx *gin.Context) {
 	paramId := ctx.Param("uuid")
 
 	dbc := db.GetConnection()
-	queryError = dbc.Preload("Category").Unscoped().Where("`uuid` = ?", paramId).First(&statement).Error
+	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&statement).Error
 
 	if statement.DeletedAt == (null.Time{}) {
-		ctx.JSON(400, gin.H{
-			"error": fmt.Sprintf("Statement#%s already restored.", paramId),
-		})
+		responders.Text().Conflict(ctx, fmt.Sprintf("Statement#%s already restored.", paramId))
 		return
 	}
 
 	if statement.ID == 0 {
-		ctx.JSON(404, gin.H{
-			"error": fmt.Sprintf("Statement#%s not found.", paramId),
-		})
+		responders.Text().NotFound(ctx, fmt.Sprintf("Statement#%s not found.", paramId))
 		return
 	}
 
@@ -352,23 +300,15 @@ func (statementsPrototype) Restore(ctx *gin.Context) {
 	restoreError = dbc.Model(&statement).Unscoped().Update("deleted_at", "NULL").Error
 
 	if restoreError != nil {
-		ctx.JSON(500, gin.H{
-			"error": fmt.Sprintf("Could not restore resource Statement#%s.", paramId),
-		})
+		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
-	ctx.JSON(200, statement)
+	responders.Json().Success(ctx, statement)
 	return
 }
 
-/**
- *	Returns instanciated "controller".
- *	@NOTE Classes aren't present in Go, return a struct with field methods instead.
- *
- *	@return statementsPrototype
- */
-func StatementsController() statementsPrototype {
-	var controllerInstance statementsPrototype
+func StatementsController() statementsProtoype {
+	var controllerInstance statementsProtoype
 	return controllerInstance
 }

@@ -8,9 +8,9 @@ import (
 type Collection struct {
 	Pointer   int         `json:"page"`
 	PageCount int         `json:"pageCount"`
-	Records   interface{} `json:"records"`
-	Count     int         `json:"recordCount"`
 	Limit     int         `json:"recordsPerPage"`
+	Count     int         `json:"recordCount"`
+	Records   interface{} `json:"records"`
 }
 
 /**

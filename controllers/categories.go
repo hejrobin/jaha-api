@@ -13,6 +13,7 @@ import (
 	// Local packages
 	"jaha-api/db"
 	"jaha-api/models"
+	"jaha-api/responders"
 	"jaha-api/utils"
 )
 
@@ -37,35 +38,28 @@ func (categoriesPrototype) Index(ctx *gin.Context) {
 
 	dbc := db.GetConnection()
 
-	// Get total count
 	dbc.Model(&models.Category{}).Count(&collectionCount)
 
-	// Set collection
-	collection = models.Collection{
-		Limit: COLLECTION_DEFAULT_LIMIT,
-		Count: collectionCount,
-	}
-
+	collection = models.Collection{}
+	collection.SetLimit(COLLECTION_DEFAULT_LIMIT)
+	collection.Grab(nil, 1, collectionCount)
 	collection.SetPointer(paramPage)
-	collection.SetPageCount(collection.GetPageCount())
 
 	// Set orderBy conditions
+	// @TODO Move MapOrderByConditions to Collection.
 	orderByConditions := utils.MapOrderByConditions(paramOrderBy)
 	query := utils.FilterOrderByConditions(dbc, models.Category{}, orderByConditions)
 
 	queryError = query.Limit(collection.Limit).Offset(collection.GetOffset()).Find(&categories).Error
 
 	if queryError != nil {
-		ctx.JSON(500, gin.H{
-			"error": queryError,
-		})
+		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
-	ctx.JSON(200, models.CategoryCollection{
-		Collection: categories,
-		Meta:       collection,
-	})
+	collection.Grab(categories, paramPage, collectionCount)
+
+	responders.Json().Success(ctx, collection)
 	return
 }
 
@@ -81,25 +75,19 @@ func (categoriesPrototype) Show(ctx *gin.Context) {
 	var queryError error
 
 	paramId := ctx.Param("uuid")
-
-	dbc := db.GetConnection()
-	queryError = dbc.Where("`uuid` = ?", paramId).First(&category).Error
+	queryError = db.GetConnection().Where("`uuid` = ?", paramId).First(&category).Error
 
 	if category.ID == 0 {
-		ctx.JSON(404, gin.H{
-			"error": fmt.Sprintf("Category#%s not found.", paramId),
-		})
+		responders.Text().NotFound(ctx, fmt.Sprintf("Category#%s not found.", paramId))
 		return
 	}
 
 	if queryError != nil {
-		ctx.JSON(500, gin.H{
-			"error": queryError,
-		})
+		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
-	ctx.JSON(200, category)
+	responders.Json().Success(ctx, category)
 	return
 }
 
@@ -122,9 +110,7 @@ func (categoriesPrototype) Create(ctx *gin.Context) {
 	dbc.Unscoped().Where("`uuid` = ?", category.UUID).Or("`name` = ?", category.Name).Or("`slug` = ?", category.Slug).First(&existing)
 
 	if existing.ID != 0 {
-		ctx.JSON(400, gin.H{
-			"error": fmt.Sprintf("Could not create resource, Category#%s already exists.", existing.UUID),
-		})
+		responders.Text().BadRequest(ctx, fmt.Sprintf("Could not create resource, Category#%s already exists.", existing.UUID))
 		return
 	}
 
@@ -132,26 +118,21 @@ func (categoriesPrototype) Create(ctx *gin.Context) {
 		UUID: utils.RandomString(8),
 	})
 
-	validationError, validationErrors := models.Validate(category)
-
-	if validationError != nil {
-		ctx.JSON(400, gin.H{
-			"error":            "Resource validation failed, see validationErrors",
-			"validationErrors": validationErrors,
+	if !category.Valid() {
+		responders.Json().BadRequest(ctx, responders.Response{
+			"error":  "Resource validation failed, see issues",
+			"issues": category.GetErrors(),
 		})
-		return
 	}
 
 	createError = dbc.Create(&category).Error
 
 	if createError != nil {
-		ctx.JSON(500, gin.H{
-			"error": "Could not create resource, unknown error.",
-		})
+		responders.Text().ServerError(ctx, "Could not create resource, unknown error.")
 		return
 	}
 
-	ctx.JSON(201, category)
+	responders.Json().Success(ctx, category)
 	return
 }
 
@@ -173,48 +154,39 @@ func (categoriesPrototype) Update(ctx *gin.Context) {
 	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&category).Error
 
 	if category.ID == 0 {
-		ctx.JSON(404, gin.H{
-			"error": fmt.Sprintf("Category#%s not found.", paramId),
-		})
+		responders.Text().NotFound(ctx, fmt.Sprintf("Category#%s not found.", paramId))
 		return
 	}
 
 	if queryError != nil {
-		ctx.JSON(500, gin.H{
-			"error": queryError,
-		})
+		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
 	ctx.BindJSON(&payload)
 
 	if payload == (models.CategoryPayload{}) {
-		ctx.JSON(400, gin.H{
-			"error": "Payload cannot be empty or malformed.",
-		})
+		responders.Text().BadRequest(ctx, "Payload cannot be empty or malformed.")
 		return
 	}
 
-	validationError, validationErrors := models.Validate(payload)
+	validationError, validationErrors := utils.Validate(payload)
 
 	if validationError != nil {
-		ctx.JSON(400, gin.H{
-			"error":            "Resource validation failed, see validationErrors",
-			"validationErrors": validationErrors,
+		responders.Json().BadRequest(ctx, responders.Response{
+			"error":  "Resource validation failed, see issues",
+			"issues": validationErrors,
 		})
-		return
 	}
 
 	updateError := dbc.Model(&category).Unscoped().Updates(payload).Error
 
 	if updateError != nil {
-		ctx.JSON(500, gin.H{
-			"error": fmt.Sprintf("Could not update Category#%s.", paramId),
-		})
+		responders.Text().ServerError(ctx, fmt.Sprintf("Could not update Category#%s.", paramId))
 		return
 	}
 
-	ctx.JSON(200, category)
+	responders.Json().Success(ctx, category)
 	return
 }
 
@@ -236,29 +208,23 @@ func (categoriesPrototype) Destroy(ctx *gin.Context) {
 	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&category).Error
 
 	if category.ID == 0 {
-		ctx.JSON(404, gin.H{
-			"error": fmt.Sprintf("Category#%s not found.", paramId),
-		})
+		responders.Text().NotFound(ctx, fmt.Sprintf("Category#%s not found.", paramId))
 		return
 	}
 
 	if queryError != nil {
-		ctx.JSON(500, gin.H{
-			"error": queryError,
-		})
+		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
 	destroyError = dbc.Delete(&category).Error
 
 	if destroyError != nil {
-		ctx.JSON(500, gin.H{
-			"error": fmt.Sprintf("Could not destroy resource Category#%s.", paramId),
-		})
+		responders.Text().ServerError(ctx, fmt.Sprintf("Could not destroy resource Category#%s.", paramId))
 		return
 	}
 
-	ctx.AbortWithStatus(204)
+	responders.NoContent(ctx)
 	return
 }
 
@@ -280,16 +246,12 @@ func (categoriesPrototype) Restore(ctx *gin.Context) {
 	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&category).Error
 
 	if category.DeletedAt == (null.Time{}) {
-		ctx.JSON(400, gin.H{
-			"error": fmt.Sprintf("Category#%s already restored.", paramId),
-		})
+		responders.Text().Conflict(ctx, fmt.Sprintf("Category#%s already restored.", paramId))
 		return
 	}
 
 	if category.ID == 0 {
-		ctx.JSON(404, gin.H{
-			"error": fmt.Sprintf("Category#%s not found.", paramId),
-		})
+		responders.Text().NotFound(ctx, fmt.Sprintf("Category#%s not found.", paramId))
 		return
 	}
 
@@ -303,22 +265,14 @@ func (categoriesPrototype) Restore(ctx *gin.Context) {
 	restoreError = dbc.Model(&category).Unscoped().Update("deleted_at", "NULL").Error
 
 	if restoreError != nil {
-		ctx.JSON(500, gin.H{
-			"error": fmt.Sprintf("Could not restore resource Category#%s.", paramId),
-		})
+		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
-	ctx.JSON(200, category)
+	responders.Json().Success(ctx, category)
 	return
 }
 
-/**
- *	Returns instanciated "controller".
- *	@NOTE Classes aren't present in Go, return a struct with field methods instead.
- *
- *	@return categoriesPrototype
- */
 func CategoriesController() categoriesPrototype {
 	var controllerInstance categoriesPrototype
 	return controllerInstance

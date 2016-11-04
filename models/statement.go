@@ -34,9 +34,17 @@ func (statement *Statement) Valid() bool {
 	validationError, validationErrors := utils.Validate(statement)
 
 	if validationError != nil {
-		statement.errors = validationErrors
+		statement.SetErrors(validationErrors)
 		return false
 	}
 
 	return true
+}
+
+func (statement *Statement) GetErrors() []string {
+	return statement.errors
+}
+
+func (statement *Statement) SetErrors(errors []string) {
+	statement.errors = errors
 }
