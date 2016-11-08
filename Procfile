@@ -1,1 +1,1 @@
-web: go run main.go
+web: go get && go run main.go
