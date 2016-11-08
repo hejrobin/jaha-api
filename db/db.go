@@ -3,7 +3,6 @@ package db
 import (
 	// Native packages
 	"log"
-	"os"
 	"sync"
 
 	// 3rd party packages
@@ -11,7 +10,7 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 
 	// Local packages
-	"jaha-api/utils"
+	"jaha-api/env"
 )
 
 var connection *gorm.DB
@@ -27,8 +26,8 @@ func GetConnection() *gorm.DB {
 	var connectionError error
 
 	initOnce.Do(func() {
-		connectionString = os.Getenv("DSN")
-		driverName := utils.Pick(os.Getenv("DBDRIVER"), "mysql")
+		connectionString = env.GetDatabaseSourceName()
+		driverName := env.GetDatabaseDriverName()
 
 		if connectionString == "" {
 			log.Fatal("DSN not set.")

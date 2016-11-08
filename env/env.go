@@ -30,12 +30,21 @@ func GetPort() string {
 }
 
 /**
- *	Returns data source name string.
+ *	Returns database source name string.
  *
  *	@return string
  */
-func GetDSN() string {
+func GetDatabaseSourceName() string {
 	return os.Getenv("DSN")
+}
+
+/**
+ *	Returns database driver name string.
+ *
+ *	@return string
+ */
+func GetDatabaseDriverName() string {
+	return utils.Pick(os.Getenv("DB"), "mysql")
 }
 
 /**
@@ -67,7 +76,7 @@ func GetSessionKey() string {
 		panic("Session key is not set!")
 	}
 
-	return realmKey
+	return sessionKey
 }
 
 /**
