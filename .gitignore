@@ -25,14 +25,14 @@ _cgo_export.*
 _testmain.go
 
 *.exe
-*.test
+*.testg
 *.prof
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
 # external packages folder
-vendor/
+vendor/*/
 !vendor/vendor.json
 
 # Ignore generated HTML files in docs

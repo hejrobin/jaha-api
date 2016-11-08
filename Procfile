@@ -1,1 +1,1 @@
-web: go get && go run main.go
+web: jaha-api
