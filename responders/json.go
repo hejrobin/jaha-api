@@ -39,6 +39,10 @@ func (prototype responseJsonPrototype) ServerError(ctx *gin.Context, responseObj
 	ResponseObject(ctx, 500, responseObject)
 }
 
+func (prototype responseJsonPrototype) NotImplemented(ctx *gin.Context, responseObject interface{}) {
+	ResponseObject(ctx, 501, responseObject)
+}
+
 func Json() responseJsonPrototype {
 	var jsonResponser responseJsonPrototype
 	return jsonResponser

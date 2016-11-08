@@ -30,6 +30,56 @@ func GetPort() string {
 }
 
 /**
+ *	Returns data source name string.
+ *
+ *	@return string
+ */
+func GetDSN() string {
+	return os.Getenv("DSN")
+}
+
+/**
+ *	Returns realm key used for auth realm.
+ *
+ *	@return string
+ */
+func GetRealmKey() string {
+	defaultRealmKey := "!NoT--R4nD0m__R34Lm_K3Y@"
+	realmKey := utils.Pick(os.Getenv("REALM"), defaultRealmKey)
+
+	if IsProductionMode() && realmKey == defaultRealmKey {
+		panic("Realm key is not set!")
+	}
+
+	return realmKey
+}
+
+/**
+ *	Returns session store key.
+ *
+ *	@return string
+ */
+func GetSessionKey() string {
+	defaultSessionKey := "!NoT--R4nD0m__s3ßioN_K3Y@"
+	sessionKey := utils.Pick(os.Getenv("SESSION"), defaultSessionKey)
+
+	if IsProductionMode() && sessionKey == defaultSessionKey {
+		panic("Session key is not set!")
+	}
+
+	return realmKey
+}
+
+/**
+ *	Returns app name, used for auth realm etc.
+ *
+ *	@return string
+ */
+func GetAppName() string {
+	return utils.Pick(os.Getenv("APP_NAME"), "jaha-api-app")
+}
+
+/**
  *	Returns true if MODE is set to ENV_PRODUCTION.
  *
  *	@return bool

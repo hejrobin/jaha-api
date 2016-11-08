@@ -4,6 +4,9 @@ import (
 	// Native packages
 	"crypto/rand"
 	"log"
+
+	// 3rd party packages
+	"golang.org/x/crypto/bcrypt"
 )
 
 /**
@@ -19,6 +22,7 @@ func Pick(expectedString string, defaultString string) string {
 	if expectedString == "" {
 		return defaultString
 	}
+
 	return expectedString
 }
 
@@ -74,4 +78,41 @@ func SecureRandomBytes(length int) []byte {
 	}
 
 	return randomBytes
+}
+
+/**
+ *	@const PasswordEncryptCost int
+ */
+const PasswordEncryptCost = 13
+
+/**
+ *	Creates and returns a password hash using bcrypt.
+ *
+ *	@param rawPassword string - Unhashed password to encrypt.
+ *
+ *	@return string
+ */
+func PasswordCreate(rawPassword string) string {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(rawPassword), PasswordEncryptCost)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return string(hashedPassword)
+}
+
+/**
+ *	Verifies a hashed password with an unhashed password to see if they match.
+ *
+ *	@param hashedPassword string - Hashed password from storage.
+ *	@param rawPassword string - Unhashed password from input.
+ *
+ *	@return bool
+ */
+func PasswordMatch(hashedPassword string, rawPassword string) bool {
+	if bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(rawPassword)) != nil {
+		return false
+	}
+	return true
 }

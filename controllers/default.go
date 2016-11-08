@@ -3,6 +3,9 @@ package controllers
 import (
 	// 3rd party packages
 	"github.com/gin-gonic/gin"
+
+	// Local packages
+	"jaha-api/responders"
 )
 
 const COLLECTION_DEFAULT_LIMIT = 25
@@ -17,9 +20,7 @@ type defaultPrototype struct{}
  *	@return void
  */
 func (defaultPrototype) MissingRoute(ctx *gin.Context) {
-	ctx.JSON(404, gin.H{
-		"error": "Missing route handler.",
-	})
+	responders.Text().NotFound(ctx, "Route not found.")
 }
 
 /**

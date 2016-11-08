@@ -27,3 +27,21 @@ CREATE TABLE `statement` (
 	CONSTRAINT `fk_statement_category`
 		FOREIGN KEY (`category_id`) REFERENCES `category` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+DROP TABLE IF EXISTS `user`;
+CREATE TABLE `user` (
+	`id` INT(11) unsigned NOT NULL AUTO_INCREMENT,
+	`uuid` VARCHAR(8) NOT NULL,
+	`first_name` VARCHAR(255) NOT NULL,
+	`last_name` VARCHAR(255) NOT NULL,
+	`email` VARCHAR(255) NOT NULL,
+	`password` TEXT NOT NULL,
+	`auth_key` VARCHAR(16) NOT NULL,
+	`role` INT(11) unsigned NOT NULL DEFAULT 1,
+	`updated_at` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+	`deleted_at` DATETIME DEFAULT NULL,
+	`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uuid` (`uuid`),
+	UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

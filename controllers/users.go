@@ -17,7 +17,7 @@ import (
 	"jaha-api/utils"
 )
 
-type categoriesPrototype struct{}
+type usersPrototype struct{}
 
 /**
  *	Lists published resources.
@@ -26,8 +26,8 @@ type categoriesPrototype struct{}
  *
  *	@return void
  */
-func (categoriesPrototype) Index(ctx *gin.Context) {
-	var categories models.Categories
+func (usersPrototype) Index(ctx *gin.Context) {
+	var users models.Users
 	var collection models.Collection
 	var collectionCount int
 	var queryError error
@@ -38,7 +38,7 @@ func (categoriesPrototype) Index(ctx *gin.Context) {
 
 	dbc := db.GetConnection()
 
-	dbc.Model(&models.Category{}).Count(&collectionCount)
+	dbc.Model(&models.User{}).Count(&collectionCount)
 
 	collection = models.Collection{}
 	collection.SetLimit(COLLECTION_DEFAULT_LIMIT)
@@ -48,16 +48,16 @@ func (categoriesPrototype) Index(ctx *gin.Context) {
 	// Set orderBy conditions
 	// @TODO Move MapOrderByConditions to Collection.
 	orderByConditions := utils.MapOrderByConditions(paramOrderBy)
-	query := utils.FilterOrderByConditions(dbc, models.Category{}, orderByConditions)
+	query := utils.FilterOrderByConditions(dbc, models.User{}, orderByConditions)
 
-	queryError = query.Limit(collection.Limit).Offset(collection.GetOffset()).Find(&categories).Error
+	queryError = query.Limit(collection.Limit).Offset(collection.GetOffset()).Find(&users).Error
 
 	if queryError != nil {
 		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
-	collection.Grab(categories, paramPage, collectionCount)
+	collection.Grab(users, paramPage, collectionCount)
 
 	responders.Json().Success(ctx, collection)
 	return
@@ -70,15 +70,15 @@ func (categoriesPrototype) Index(ctx *gin.Context) {
  *
  *	@return void
  */
-func (categoriesPrototype) Show(ctx *gin.Context) {
-	var category models.Category
+func (usersPrototype) Show(ctx *gin.Context) {
+	var user models.User
 	var queryError error
 
 	paramId := ctx.Param("uuid")
-	queryError = db.GetConnection().Where("`uuid` = ?", paramId).First(&category).Error
+	queryError = db.GetConnection().Where("`uuid` = ?", paramId).First(&user).Error
 
-	if category.ID == 0 {
-		responders.Text().NotFound(ctx, fmt.Sprintf("Category#%s not found.", paramId))
+	if user.ID == 0 {
+		responders.Text().NotFound(ctx, fmt.Sprintf("User#%s not found.", paramId))
 		return
 	}
 
@@ -87,7 +87,7 @@ func (categoriesPrototype) Show(ctx *gin.Context) {
 		return
 	}
 
-	responders.Json().Success(ctx, category)
+	responders.Json().Success(ctx, user)
 	return
 }
 
@@ -98,42 +98,48 @@ func (categoriesPrototype) Show(ctx *gin.Context) {
  *
  *	@return void
  */
-func (categoriesPrototype) Create(ctx *gin.Context) {
-	var category models.Category
-	var existing models.Category
+func (usersPrototype) Create(ctx *gin.Context) {
+	var user models.User
+	var existing models.User
 	var createError error
 
-	ctx.BindJSON(&category)
+	ctx.BindJSON(&user)
 
 	dbc := db.GetConnection()
 
-	dbc.Unscoped().Where("`uuid` = ?", category.UUID).Or("`name` = ?", category.Name).Or("`slug` = ?", category.Slug).First(&existing)
+	dbc.Unscoped().Where("`email` = ?", user.Email).First(&existing)
 
 	if existing.ID != 0 {
-		responders.Text().BadRequest(ctx, fmt.Sprintf("Could not create resource, Category#%s already exists.", existing.UUID))
+		responders.Text().BadRequest(ctx, fmt.Sprintf("Could not create resource, User#%s already exists.", existing.UUID))
 		return
 	}
 
-	mergo.Merge(&category, models.Category{
-		UUID: utils.RandomString(8),
+	mergo.Merge(&user, models.User{
+		Role:    1,
+		UUID:    utils.RandomString(8),
+		AuthKey: utils.RandomString(16),
 	})
 
-	if !category.Valid() {
+	if user.Password != "" {
+		user.Password = utils.PasswordCreate(user.Password)
+	}
+
+	if !user.Valid() {
 		responders.Json().BadRequest(ctx, responders.Response{
 			"error":  "Resource validation failed, see issues",
-			"issues": category.GetErrors(),
+			"issues": user.GetErrors(),
 		})
 		return
 	}
 
-	createError = dbc.Create(&category).Error
+	createError = dbc.Create(&user).Error
 
 	if createError != nil {
 		responders.Text().ServerError(ctx, "Could not create resource, unknown error.")
 		return
 	}
 
-	responders.Json().Success(ctx, category)
+	responders.Json().Success(ctx, user)
 	return
 }
 
@@ -144,18 +150,18 @@ func (categoriesPrototype) Create(ctx *gin.Context) {
  *
  *	@return void
  */
-func (categoriesPrototype) Update(ctx *gin.Context) {
-	var category models.Category
-	var payload models.CategoryPayload
+func (usersPrototype) Update(ctx *gin.Context) {
+	var user models.User
+	var payload models.UserPayload
 	var queryError error
 
 	paramId := ctx.Param("uuid")
 
 	dbc := db.GetConnection()
-	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&category).Error
+	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&user).Error
 
-	if category.ID == 0 {
-		responders.Text().NotFound(ctx, fmt.Sprintf("Category#%s not found.", paramId))
+	if user.ID == 0 {
+		responders.Text().NotFound(ctx, fmt.Sprintf("User#%s not found.", paramId))
 		return
 	}
 
@@ -166,9 +172,19 @@ func (categoriesPrototype) Update(ctx *gin.Context) {
 
 	ctx.BindJSON(&payload)
 
-	if payload == (models.CategoryPayload{}) {
+	if payload == (models.UserPayload{}) {
 		responders.Text().BadRequest(ctx, "Payload cannot be empty or malformed.")
 		return
+	}
+
+	if (payload.Password != "" && payload.PasswordConfirm != "") && payload.Password != payload.PasswordConfirm {
+		responders.Json().BadRequest(ctx, responders.Response{
+			"error": "Passwords must match.",
+		})
+		return
+	} else {
+		payload.Password = utils.PasswordCreate(payload.Password)
+		payload.PasswordConfirm = payload.Password
 	}
 
 	validationError, validationErrors := utils.Validate(payload)
@@ -181,14 +197,14 @@ func (categoriesPrototype) Update(ctx *gin.Context) {
 		return
 	}
 
-	updateError := dbc.Model(&category).Unscoped().Updates(payload).Error
+	updateError := dbc.Model(&user).Unscoped().Updates(payload).Error
 
 	if updateError != nil {
-		responders.Text().ServerError(ctx, fmt.Sprintf("Could not update Category#%s.", paramId))
+		responders.Text().ServerError(ctx, fmt.Sprintf("Could not update User#%s.", paramId))
 		return
 	}
 
-	responders.Json().Success(ctx, category)
+	responders.Json().Success(ctx, user)
 	return
 }
 
@@ -199,18 +215,18 @@ func (categoriesPrototype) Update(ctx *gin.Context) {
  *
  *	@return void
  */
-func (categoriesPrototype) Destroy(ctx *gin.Context) {
-	var category models.Category
+func (usersPrototype) Destroy(ctx *gin.Context) {
+	var user models.User
 	var queryError error
 	var destroyError error
 
 	paramId := ctx.Param("uuid")
 
 	dbc := db.GetConnection()
-	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&category).Error
+	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&user).Error
 
-	if category.ID == 0 {
-		responders.Text().NotFound(ctx, fmt.Sprintf("Category#%s not found.", paramId))
+	if user.ID == 0 {
+		responders.Text().NotFound(ctx, fmt.Sprintf("User#%s not found.", paramId))
 		return
 	}
 
@@ -219,10 +235,10 @@ func (categoriesPrototype) Destroy(ctx *gin.Context) {
 		return
 	}
 
-	destroyError = dbc.Delete(&category).Error
+	destroyError = dbc.Delete(&user).Error
 
 	if destroyError != nil {
-		responders.Text().ServerError(ctx, fmt.Sprintf("Could not destroy resource Category#%s.", paramId))
+		responders.Text().ServerError(ctx, fmt.Sprintf("Could not destroy resource User#%s.", paramId))
 		return
 	}
 
@@ -237,23 +253,23 @@ func (categoriesPrototype) Destroy(ctx *gin.Context) {
  *
  *	@return void
  */
-func (categoriesPrototype) Restore(ctx *gin.Context) {
-	var category models.Category
+func (usersPrototype) Restore(ctx *gin.Context) {
+	var user models.User
 	var queryError error
 	var restoreError error
 
 	paramId := ctx.Param("uuid")
 
 	dbc := db.GetConnection()
-	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&category).Error
+	queryError = dbc.Unscoped().Where("`uuid` = ?", paramId).First(&user).Error
 
-	if category.DeletedAt == (null.Time{}) {
-		responders.Text().Conflict(ctx, fmt.Sprintf("Category#%s already restored.", paramId))
+	if user.DeletedAt == (null.Time{}) {
+		responders.Text().Conflict(ctx, fmt.Sprintf("User#%s already restored.", paramId))
 		return
 	}
 
-	if category.ID == 0 {
-		responders.Text().NotFound(ctx, fmt.Sprintf("Category#%s not found.", paramId))
+	if user.ID == 0 {
+		responders.Text().NotFound(ctx, fmt.Sprintf("User#%s not found.", paramId))
 		return
 	}
 
@@ -262,18 +278,18 @@ func (categoriesPrototype) Restore(ctx *gin.Context) {
 		return
 	}
 
-	restoreError = dbc.Model(&category).Unscoped().Update("deleted_at", "NULL").Error
+	restoreError = dbc.Model(&user).Unscoped().Update("deleted_at", "NULL").Error
 
 	if restoreError != nil {
 		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 
-	responders.Json().Success(ctx, category)
+	responders.Json().Success(ctx, user)
 	return
 }
 
-func CategoriesController() categoriesPrototype {
-	var controllerInstance categoriesPrototype
+func UsersController() usersPrototype {
+	var controllerInstance usersPrototype
 	return controllerInstance
 }

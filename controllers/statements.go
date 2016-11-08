@@ -159,7 +159,7 @@ func (statementsProtoype) Create(ctx *gin.Context) {
 	}
 
 	category := models.Category{}
-	categoryError := dbc.Model(&models.Category{}).Where("`uuid` = ?", payload.Category).First(&category).Error
+	categoryError := dbc.Model(&models.Category{}).First(&category, payload.Category).Error
 
 	if categoryError != nil {
 		responders.Text().NotFound(ctx, fmt.Sprintf("Category#%s not found.", payload.Category))
@@ -224,6 +224,7 @@ func (statementsProtoype) Update(ctx *gin.Context) {
 			"error":  "Resource validation failed, see issues",
 			"issues": validationErrors,
 		})
+		return
 	}
 
 	updateError := dbc.Model(&statement).Unscoped().Updates(payload).Error
@@ -303,9 +304,7 @@ func (statementsProtoype) Restore(ctx *gin.Context) {
 	}
 
 	if queryError != nil {
-		ctx.JSON(500, gin.H{
-			"error": queryError,
-		})
+		responders.Text().ServerError(ctx, queryError.Error())
 		return
 	}
 

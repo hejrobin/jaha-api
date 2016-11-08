@@ -39,6 +39,10 @@ func (prototype responseTextPrototype) ServerError(ctx *gin.Context, responseTex
 	ResponseText(ctx, 500, responseText)
 }
 
+func (prototype responseTextPrototype) NotImplemented(ctx *gin.Context, responseText string) {
+	ResponseText(ctx, 501, responseText)
+}
+
 func Text() responseTextPrototype {
 	var textResponder responseTextPrototype
 	return textResponder
