@@ -33,6 +33,7 @@ _testmain.go
 
 # external packages folder
 vendor/
+!vendor/vendor.json
 
 # Ignore generated HTML files in docs
 docs/**.html
