@@ -2,5 +2,9 @@
 	"comment": "",
 	"ignore": "test",
 	"package": [],
-	"rootPath": "jaha-api"
+	"rootPath": "jaha-api",
+	"heroku": {
+		"install" : [ "./..." ],
+		"goVersion": "go1.6"
+	}
 }
