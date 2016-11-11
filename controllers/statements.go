@@ -159,7 +159,7 @@ func (statementsProtoype) Create(ctx *gin.Context) {
 	}
 
 	category := models.Category{}
-	categoryError := dbc.Model(&models.Category{}).First(&category, payload.Category).Error
+	categoryError := dbc.Model(&models.Category{}).Where("`uuid` = ?", payload.Category).First(&category).Error
 
 	if categoryError != nil {
 		responders.Text().NotFound(ctx, fmt.Sprintf("Category#%s not found.", payload.Category))

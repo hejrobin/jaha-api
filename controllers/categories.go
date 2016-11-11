@@ -129,7 +129,7 @@ func (categoriesPrototype) Create(ctx *gin.Context) {
 	createError = dbc.Create(&category).Error
 
 	if createError != nil {
-		responders.Text().ServerError(ctx, createError.Error())
+		responders.Text().ServerError(ctx, "Could not create resource, unknown error.")
 		return
 	}
 
