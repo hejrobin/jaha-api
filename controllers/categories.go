@@ -107,7 +107,7 @@ func (categoriesPrototype) Create(ctx *gin.Context) {
 
 	dbc := db.GetConnection()
 
-	dbc.Unscoped().Where("`uuid` = ?", category.UUID).Or("`name` = ?", category.Name).Or("`slug` = ?", category.Slug).First(&existing)
+	dbc.Unscoped().Where("`name` = ?", category.Name).First(&existing)
 
 	if existing.ID != 0 {
 		responders.Text().BadRequest(ctx, fmt.Sprintf("Could not create resource, Category#%s already exists.", existing.UUID))
@@ -129,7 +129,7 @@ func (categoriesPrototype) Create(ctx *gin.Context) {
 	createError = dbc.Create(&category).Error
 
 	if createError != nil {
-		responders.Text().ServerError(ctx, "Could not create resource, unknown error.")
+		responders.Text().ServerError(ctx, createError.Error())
 		return
 	}
 
