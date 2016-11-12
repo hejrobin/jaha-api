@@ -58,6 +58,10 @@ func (statementsProtoype) Index(ctx *gin.Context) {
 		scopeKey, scopeValue = scope[0], scope[1]
 	}
 
+	if scopeKey == "" && scopeValue == "" && paramScope != "" {
+		scopeKey = paramScope
+	}
+
 	if scopeKey != "" {
 		switch scopeKey {
 		case "random":
@@ -67,6 +71,7 @@ func (statementsProtoype) Index(ctx *gin.Context) {
 
 			if paramScope == "randomPick" {
 				randomLimit = 1
+				paramPage = 1
 			}
 
 			queryError = query.Scopes(scopes.Statement().Random).Limit(randomLimit).Find(&statements).Error
