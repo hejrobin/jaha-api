@@ -46,6 +46,9 @@ func attachDefaultRoutes(router *gin.Engine) {
 
 		v1.POST("auth", Auth.LoginHandler)
 
+		// @NOTE Expose Statement resource endpoint
+		v1.GET("statements", controllers.StatementsController().Index)
+
 		if env.IsProductionMode() {
 			v1.Use(Auth.MiddlewareFunc())
 		}
@@ -81,7 +84,7 @@ func attachDefaultRoutes(router *gin.Engine) {
 
 		statement := v1.Group("statements")
 		{
-			statement.GET("", controllers.StatementsController().Index)
+			//statement.GET("", controllers.StatementsController().Index)
 			statement.POST("", controllers.StatementsController().Create)
 
 			statement.GET(":uuid", controllers.StatementsController().Show)
